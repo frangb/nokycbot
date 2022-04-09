@@ -80,8 +80,10 @@ keyboard_premium = [
     ]
 ]
 keyboard_developer = [
-    [InlineKeyboardButton("Message the developer",
-                          url='https://t.me/fgbernal')]
+    [
+        InlineKeyboardButton("Message the developer", url='https://t.me/fgbernal'),
+        InlineKeyboardButton("Visit the project in GitHub", url='https://github.com/frangb/nokycbot')
+    ]
 ]
 
 keyboard_runquery = [
