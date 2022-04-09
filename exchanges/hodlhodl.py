@@ -29,9 +29,13 @@ class HodlHodl:
             logger.error("Error obtaining orders from Robosats: %s - %s" % (e.errno, e.strerror))
             return []
 
-        jsonweb = f.json()
-        f.close()
-        alloffers = jsonweb['offers']
+        try:
+            jsonweb = f.json()
+            f.close()
+            alloffers = jsonweb['offers']
+        except json.decoder.JSONDecodeError as e:
+            logger.error("Error decoding orders from HodlHodl: %s - %s" % (e.errno, e.strerror))
+            return []
 
         lista = []
 

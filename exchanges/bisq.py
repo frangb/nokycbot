@@ -34,10 +34,12 @@ class Bisq:
         except requests.exceptions.RequestException as e:
             logger.error("Error obtaining orders from Bisq: %s - %s" % (e.errno, e.strerror))
             return []
-
-        values = f.json()
-        f.close()
-    
+        try:
+            values = f.json()
+            f.close()
+        except json.decoder.JSONDecodeError as e:
+            logger.error("Error decoding orders from Bisq: %s - %s" % (e.errno, e.strerror))
+            return []
         key = f"btc_{fiat}"
         
         alloffers = []
@@ -55,3 +57,30 @@ class Bisq:
             alloffers.append(offer)
         alloffers.sort(key=lambda item: item.get('price'))
         return alloffers
+    
+    def getFiatPrice(fiat, session):
+        bisqApi = 'http://wizpriceje6q5tdrxkyiazsgu7irquiqjy2dptezqhrtu7l2qelqktid.onion/getAllMarketPrices'
+        try:
+            f = session.get(bisqApi)
+        except requests.exceptions.Timeout as e:
+            # Maybe set up for a retry, or continue in a retry loop
+            logger.error("Error obtaining price from Bisq (timeout): %s - %s" % (e.errno, e.strerror))
+            return 1
+        except requests.exceptions.TooManyRedirects as e:
+            logger.error("Error obtaining price from Bisq (too many redirects): %s - %s" % (e.errno, e.strerror))
+            return 1
+        except requests.exceptions.RequestException as e:
+            logger.error("Error obtaining price from Bisq: %s - %s" % (e.errno, e.strerror))
+            return 1 
+            # * I return 1 instead of 0 to avoid errors raised dividing by the price    
+        
+        try:    
+            priceapi = f.json()
+            f.close()
+        except json.decoder.JSONDecodeError as e:
+            logger.error("Error decoding orders from Bisq: %s - %s" % (e.errno, e.strerror))
+            return 1
+
+        for currency in priceapi['data']:
+            if (currency['currencyCode'].lower()==fiat):
+                return int(float(currency['price']))

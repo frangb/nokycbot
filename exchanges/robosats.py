@@ -46,10 +46,12 @@ class Robosats:
             logger.error("Error obtaining orders from Robosats: %s - %s" % (e.errno, e.strerror))
             return []
         
-
-        values = f.json()
-        f.close()
-        
+        try:
+            values = f.json()
+            f.close()
+        except json.decoder.JSONDecodeError as e:
+            logger.error("Error decoding orders from Robosats: %s - %s" % (e.errno, e.strerror))
+            return []
         alloffers = []
 
         for line in values:

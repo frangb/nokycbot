@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
+"""This is a telegram bot to get offers from p2p exchanges like
+    bisq, hodlhodl and robosats"""
+    
 import logging
 
 from telegram.ext.updater import Updater
@@ -14,16 +19,15 @@ from telegram import ParseMode
 from exchanges.bisq import Bisq
 from exchanges.robosats import Robosats
 from exchanges.hodlhodl import HodlHodl
-from exchanges.fiat import Fiat
 
 import requests
 import os
 import prettytable as pt
-import config
 
+import config as config
 
 # read MODE env variable, fall back to 'polling' when undefined
-mode = os.environ.get("MODE", "webhook")
+mode = os.environ.get("MODE", config.DEFAULT_CONNECTION)
 
 # Enable logging
 logging.basicConfig(
@@ -95,7 +99,7 @@ def get_tor_session():
 
 def start(update: Update, context: CallbackContext):
     update.message.reply_text(
-        'Welcome to noKYCbot. I will help you to find buy and sell orders in Bisq, HodlHodl and Robosats. Please configure the following options:')
+        'Welcome to noKYCbot. I will help you find buy and sell orders in Bisq, HodlHodl and Robosats. Please configure the following options:')
     action_url(update, context)
     exchange_url(update, context)
     currency_url(update, context)
@@ -122,7 +126,7 @@ def test_url(update: Update, context: CallbackContext, pass_args=True):
 
 def print_orders(fiat, direction, limit, exchanges):
     session = get_tor_session()
-    price_exch = Fiat.getfiatprice(fiat, session)
+    price_exch = Bisq.getFiatPrice(fiat, session)
     if exchanges == "all":
         logging.info("Obtaining orders from bisq")
         bisqOffers = Bisq.getOffers(fiat, direction, price_exch, session)
@@ -284,10 +288,9 @@ def main() -> None:
     # Filters out unknown messages.
     disp.add_handler(MessageHandler(Filters.text, unknown_text))
 
-    PORT = int(os.environ.get('PORT', 8443))
     if mode == 'webhook':
         logger.info("starting webhook")
-        updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=config.TOKEN, webhook_url=config.APP_NAME + config.TOKEN)
+        updater.start_webhook(listen="0.0.0.0", port=config.WEBHOOK_PORT, url_path=config.TOKEN, webhook_url=config.APP_NAME + config.TOKEN)
     else:
         updater.start_polling()
         updater.idle()
