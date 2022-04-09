@@ -289,8 +289,9 @@ def main() -> None:
     disp.add_handler(MessageHandler(Filters.text, unknown_text))
 
     if mode == 'webhook':
+        PORT = os.environ.get("MODE", config.DEFAULT_CONNECTION)
         logger.info("starting webhook")
-        updater.start_webhook(listen="0.0.0.0", port=config.WEBHOOK_PORT, url_path=config.TOKEN, webhook_url=config.APP_NAME + config.TOKEN)
+        updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=config.TOKEN, webhook_url=config.APP_NAME + config.TOKEN)
     else:
         updater.start_polling()
         updater.idle()
