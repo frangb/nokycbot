@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.0.2 (10/04/2022)
+
+## Added
+- Option to download the result as an image instead of an ASCII table (fix problem with iOS devices and table width)
+
 ## v0.0.1 (09/04/2022)
 
 ## Added
