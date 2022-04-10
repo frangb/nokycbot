@@ -3,3 +3,4 @@ python_telegram_bot==13.11
 requests==2.27.1
 telegram==0.0.1
 PySocks==1.7.1
+Pillow==9.1.0

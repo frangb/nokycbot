@@ -3,7 +3,7 @@
 
 """This is a telegram bot to get offers from p2p exchanges like
     bisq, hodlhodl and robosats"""
-    
+
 import logging
 
 from telegram.ext.updater import Updater
@@ -13,8 +13,7 @@ from telegram.ext.commandhandler import CommandHandler
 from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.filters import Filters
 from telegram.ext import CallbackQueryHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram import ParseMode
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 
 from exchanges.bisq import Bisq
 from exchanges.robosats import Robosats
@@ -23,6 +22,8 @@ from exchanges.hodlhodl import HodlHodl
 import requests
 import os
 import prettytable as pt
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 import config as config
 
@@ -80,16 +81,40 @@ keyboard_premium = [
     ]
 ]
 keyboard_developer = [
-    [
-        InlineKeyboardButton("Message the developer", url='https://t.me/fgbernal'),
-        InlineKeyboardButton("Visit the project in GitHub", url='https://github.com/frangb/nokycbot')
-    ]
+    [InlineKeyboardButton("Message the developer",
+                          url='https://t.me/fgbernal')]
 ]
 
 keyboard_runquery = [
     [InlineKeyboardButton("Run query", callback_data='query')]
 ]
+
+keyboard_format = [
+    [
+        InlineKeyboardButton("Plain text", callback_data='text'),
+        InlineKeyboardButton("Image", callback_data='img')
+    ]
+]
+
 # End User configuration
+
+
+def table_to_img(table):
+    # Calculate dimensions of image from text
+    fnt = ImageFont.truetype("fonts/FreeMono.ttf", 15)
+    img = Image.new('RGB', (200, 100))
+    d = ImageDraw.Draw(img)
+    d.text((10, 10), table, font=fnt, fill=(255, 0, 0))
+    text_width, text_height = d.textsize(table, font=fnt)
+    # draw the actal image
+    img = Image.new('RGB', (text_width+20, text_height+20), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.text(xy=(10, 10), text=table, font=fnt, fill=(0, 0, 0))
+    s = io.BytesIO()
+    img.save(s, 'png')
+    s.seek(0)
+    return s
+
 
 def get_tor_session():
     logging.info("starting tor session")
@@ -106,6 +131,7 @@ def start(update: Update, context: CallbackContext):
     exchange_url(update, context)
     currency_url(update, context)
     premium_url(update, context)
+    format_url(update, context)
     # TODO: Add button to run query from this menu
 
 
@@ -119,11 +145,8 @@ def help(update: Update, context: CallbackContext):
     /currency - set the currency you want to pay or get paid
     /premium - set the premium over or under market price you're willing to accept
     /action - you want to buy or sell bitcoin?
+    /format - output format, image or plain text
     """, reply_markup=reply_markup)
-
-
-def test_url(update: Update, context: CallbackContext, pass_args=True):
-    update.message.reply_text("this is a test")
 
 
 def print_orders(fiat, direction, limit, exchanges):
@@ -160,19 +183,16 @@ def print_orders(fiat, direction, limit, exchanges):
         ['Exchange', 'Price', 'Dif', 'Min', 'Max', 'Method'])
 
     for offer in allOffers:
-        if limit == "alloffers":
-            if offer['method'].lower() not in config.avoid_methods:
-                table.add_row([f"{offer['exchange']:10}", f"{offer['price']:8n}", f"{offer['dif']:4.1f}%",
-                              f"{offer['min_amount']:7n}", f"{offer['max_amount']:7n}", f"{offer['method']}"])
-        else:
-            if direction == "buy":
-                if offer['dif'] > int(limit):
-                    table.add_row([f"{offer['exchange']:10}", f"{offer['price']:8n}", f"{offer['dif']:4.1f}%",
-                                  f"{offer['min_amount']:7n}", f"{offer['max_amount']:7n}", f"{offer['method']}"])
+        if offer['method'].lower() not in config.avoid_methods:
+            row = [f"{offer['exchange']:10}", f"{offer['price']:8n}", f"{offer['dif']:4.1f}%",
+                   f"{offer['min_amount']:7n}", f"{offer['max_amount']:7n}", f"{offer['method']}"]
+            if limit == "alloffers":
+                table.add_row(row)
             else:
-                if offer['dif'] < int(limit):
-                    table.add_row([f"{offer['exchange']:10}", f"{offer['price']:8n}", f"{offer['dif']:4.1f}%",
-                                  f"{offer['min_amount']:7n}", f"{offer['max_amount']:7n}", f"{offer['method']}"])
+                if (direction == "buy") and (offer['dif'] > int(limit)):
+                    table.add_row(row)
+                if (direction == "sell") and (offer['dif'] < int(limit)):
+                    table.add_row(row)
         # TODO: split the message in chunks so it won't exceed the max 4096 characters / msg
         if len(table.get_string()) > 3800:
             logger.info("limite de caracteres alcanzado")
@@ -200,10 +220,22 @@ def query_url(update: Update, context: CallbackContext):
         fiat = context.user_data["currency"]
     else:
         fiat = "eur"
+
+    if "format" in context.user_data.keys():
+        format = context.user_data["format"]
+    else:
+        format = 'text'
+
     price, result = print_orders(fiat, action, premium, exchange)
     msg = f"BTC price: {price} {fiat.upper()}\nBTC {action} offers:\n" + \
-        f"<pre>{result}</pre>"
-    update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+        f"{result}"
+
+    if format == 'img':
+        img = table_to_img(msg)
+        update.message.reply_photo(img)
+    else:
+        update.message.reply_text(
+            f'```{msg}```', parse_mode=ParseMode.MARKDOWN_V2)
 
 
 def button(update: Update, context: CallbackContext):
@@ -236,6 +268,11 @@ def button(update: Update, context: CallbackContext):
         update.callback_query.bot.send_message(
             chat_id=update.callback_query.from_user.id,
             text=msg)
+    elif update.callback_query.data in ['img', 'text']:
+        context.user_data["format"] = update.callback_query.data
+        update.callback_query.bot.send_message(
+            chat_id=update.callback_query.from_user.id,
+            text="Ok, I will display the result as " + context.user_data["format"])
     elif update.callback_query.data in ['query']:
         update.callback_query.bot.send_message(
             chat_id=update.callback_query.from_user.id,
@@ -267,13 +304,19 @@ def action_url(update: Update, context: CallbackContext):
         'What do you want to do?', reply_markup=reply_markup)
 
 
+def format_url(update: Update, context: CallbackContext):
+    reply_markup = InlineKeyboardMarkup(keyboard_format)
+    update.message.reply_text(
+        'In which format do you want the result to be displayed?', reply_markup=reply_markup)
+
+
 def unknown_text(update: Update, context: CallbackContext):
     update.message.reply_text(
         "Sorry I can't recognize what you said '%s'" % update.message.text)
 
 
 def main() -> None:
-    
+
     updater = Updater(config.TOKEN,
                       use_context=True)
     disp = updater.dispatcher
@@ -283,6 +326,7 @@ def main() -> None:
     disp.add_handler(CommandHandler('currency', currency_url))
     disp.add_handler(CommandHandler('premium', premium_url))
     disp.add_handler(CommandHandler('action', action_url))
+    disp.add_handler(CommandHandler('format', format_url))
     disp.add_handler(CommandHandler('query', query_url))
 
     disp.add_handler(CallbackQueryHandler(button))
@@ -291,9 +335,10 @@ def main() -> None:
     disp.add_handler(MessageHandler(Filters.text, unknown_text))
 
     if mode == 'webhook':
-        PORT = os.environ.get("MODE", config.DEFAULT_CONNECTION)
+        PORT = os.environ.get("PORT", config.DEFAULT_CONNECTION)
         logger.info("starting webhook")
-        updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=config.TOKEN, webhook_url=config.APP_NAME + config.TOKEN)
+        updater.start_webhook(listen="0.0.0.0", port=PORT, url_path=config.TOKEN,
+                              webhook_url=config.APP_NAME + config.TOKEN)
     else:
         updater.start_polling()
         updater.idle()
