@@ -1,0 +1,31 @@
+zh:
+  buy: 我想购买比特币
+  sell: 我想卖出比特币
+  show_all: 显示所有交易所
+  start_search: 开始搜索!
+  plain_text: 纯文本
+  image: 图片
+  developer: 联系开发者
+  intro: "欢迎来到noKYCbot。我将帮助你在去中心化交易所Bisq、HodlHodl和Robosats上找到买入和卖出订单。请设置以下搜索参数:"
+  action_question: 你想做什么?
+  action_reply: OK! 我将向你展示其他用户的%{action}提议
+  exchange_question:  你想使用哪些交易所?
+  exchange_reply: 好吧，我给你看%{exchange}订单
+  currency_question: 您想以什么货币支付或被支付？
+  currency_reply: 选择的货币是%{currency}
+  premium_question: 你愿意接受高于或低于市场价格的溢价吗?
+  premium_all_reply: 很好，我给你看所有的订单，从最有利的到最不利的
+  premium_low_reply: 好的，我将把限价设定为低于市场价格%{premium} % 
+  premium_high_reply: 好的，我将限价设置为比市场价格高%{premium} %
+  format_question: 你希望以哪种格式获得回应（建议iOS设备使用图片）
+  format_reply: 好的，我把结果显示为%{format}
+  run_query: 现在你可以运行搜索
+  searching: 收集报价。可能还要等一下...
+  not_recognized: 对不起，我听不懂你说什么，%{message}
+  language_select: 选择需要的语言
+  language_reply: 好的，已选择语言
+  command_available: "可用命令:"
+  command_start: 机器人会问你几个问题来根据你的需要过滤订单
+  command_query: 开始搜索
+  command_help: 显示此帮助
+  command_lang: 改变语言

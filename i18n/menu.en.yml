@@ -1,0 +1,31 @@
+en:
+  buy: I want to buy BTC
+  sell: I want to sell BTC
+  show_all: Show all
+  start_search: Start the search!
+  plain_text: Plain text
+  image: Image
+  developer: Message the developer
+  intro: "Welcome to noKYCbot. I will help you find buy and sell orders from Bisq, HodlHodl and Robosats. Please configure the following options:"
+  action_question: What do you want to do?
+  action_reply: Got it!, I will show you %{action} offers from other users
+  exchange_question: Which exchange(s) do you want to use?
+  exchange_reply: Ok, I will show you orders from %{exchange} exchange(s)
+  currency_question: In which currency do you want to pay or get paid?
+  currency_reply: Currency is set to %{currency}
+  premium_question: Which premium are you willing to accept over or under market price?
+  premium_all_reply: All right, I will show you all orders, regardless of price
+  premium_low_reply: Ok, I will set the price limit at %{premium} % below the market price
+  premium_high_reply: Ok, I will set the price limit at %{premium} % above the market price
+  format_question: In which format do you want the result to be displayed? (image is recomended for iOS devices)
+  format_reply: Ok, I will display the result as %{format}
+  run_query: Now you can run the query
+  searching: Gathering offers. Please wait (this may take a while)...
+  not_recognized: Sorry I can't recognize what you said, %{message}
+  language_select: Select language
+  language_reply: Ok, language selected
+  command_available: "Available Commands:"
+  command_start: Bot will ask you a few questions to filter the orders according to your needs
+  command_query: Execute the query
+  command_help: Show this help
+  command_lang: Change language
