@@ -5,6 +5,7 @@
     bisq, hodlhodl and robosats"""
 
 import logging
+import i18n
 
 from telegram.ext.updater import Updater
 from telegram.update import Update
@@ -15,17 +16,28 @@ from telegram.ext.filters import Filters
 from telegram.ext import CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 
-from exchanges.bisq import Bisq
-from exchanges.robosats import Robosats
-from exchanges.hodlhodl import HodlHodl
+# Utils
+from utils.utils import print_orders, table_to_img
 
-import requests
 import os
-import prettytable as pt
-from PIL import Image, ImageDraw, ImageFont
-import io
 
 import config as config
+
+MYDIR = os.path.dirname(__file__)
+i18n.load_path.append(os.path.join(MYDIR, 'i18n'))
+i18n.set('locale', 'en')
+i18n.set('fallback', 'en')
+
+# Emojis
+EMOJI_ROBOT = u'\U0001F916'
+EMOJI_PICTURE = '🏞'
+EMOJI_TEXT = '🔠'
+EMOJI_SELL = '➡️'
+EMOJI_BUY = '⬅️'
+EMOJI_ES = '🇪🇸'
+EMOJI_EN = '🇺🇸'
+EMOJI_ZH = '🇨🇳'
+EMOJI_IT = '🇮🇹'
 
 # read MODE env variable, fall back to 'polling' when undefined
 mode = os.environ.get("MODE", config.DEFAULT_CONNECTION)
@@ -36,171 +48,57 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Keyboards
-keyboard_actions = [
-    [
-        InlineKeyboardButton("I want to buy BTC", callback_data='sell'),
-        InlineKeyboardButton("I want to sell BTC", callback_data='buy')
-    ]
-]
-
-keyboard_exchanges = [
-    [
-        InlineKeyboardButton("Bisq", callback_data='bisq'),
-        InlineKeyboardButton("HodlHodl", callback_data='hodlhodl'),
-        InlineKeyboardButton("Robosats", callback_data='robosats'),
-        InlineKeyboardButton("All", callback_data='all')
-    ]
-]
-
-keyboard_currencies = [
-    [
-        InlineKeyboardButton("USD", callback_data='usd'),
-        InlineKeyboardButton("EUR", callback_data='eur')
-    ]
-]
-
-keyboard_premium = [
-    [
-        InlineKeyboardButton("-9%", callback_data='-9'),
-        InlineKeyboardButton("-7%", callback_data='-7'),
-        InlineKeyboardButton("-5%", callback_data='-5'),
-        InlineKeyboardButton("-3%", callback_data='-3'),
-        InlineKeyboardButton("-1%", callback_data='-1')
-    ],
-    [
-        InlineKeyboardButton("Show all", callback_data='alloffers'),
-    ],
-    [
-        InlineKeyboardButton("0%", callback_data='0'),
-        InlineKeyboardButton("1%", callback_data='1'),
-        InlineKeyboardButton("3%", callback_data='3'),
-        InlineKeyboardButton("5%", callback_data='5'),
-        InlineKeyboardButton("7%", callback_data='7'),
-        InlineKeyboardButton("9%", callback_data='9'),
-    ]
-]
-keyboard_developer = [
-    [InlineKeyboardButton("Message the developer",
-                          url='https://t.me/fgbernal')]
-]
-
-keyboard_runquery = [
-    [InlineKeyboardButton("Run query", callback_data='query')]
-]
-
-keyboard_format = [
-    [
-        InlineKeyboardButton("Plain text", callback_data='text'),
-        InlineKeyboardButton("Image", callback_data='img')
-    ]
-]
-
-# End User configuration
-
-
-def table_to_img(table):
-    # Calculate dimensions of image from text
-    fnt = ImageFont.truetype("fonts/FreeMono.ttf", 15)
-    img = Image.new('RGB', (200, 100))
-    d = ImageDraw.Draw(img)
-    d.text((10, 10), table, font=fnt, fill=(255, 0, 0))
-    text_width, text_height = d.textsize(table, font=fnt)
-    # draw the actal image
-    img = Image.new('RGB', (text_width+20, text_height+20), (255, 255, 255))
-    d = ImageDraw.Draw(img)
-    d.text(xy=(10, 10), text=table, font=fnt, fill=(0, 0, 0))
-    s = io.BytesIO()
-    img.save(s, 'png')
-    s.seek(0)
-    return s
-
-
-def get_tor_session():
-    logging.info("starting tor session")
-    session = requests.session()
-    session.proxies = {'http':  'socks5h://127.0.0.1:' + config.TOR_PORT,
-                       'https': 'socks5h://127.0.0.1:' + config.TOR_PORT}
-    return session
-
 
 def start(update: Update, context: CallbackContext):
+    if 'lang' not in context.user_data.keys():
+        context.user_data["lang"] = 'en'
     update.message.reply_text(
-        'Welcome to noKYCbot. I will help you find buy and sell orders in Bisq, HodlHodl and Robosats. Please configure the following options:')
+        EMOJI_ROBOT + ' ' + i18n.t('menu.intro', locale=context.user_data["lang"]))
     action_url(update, context)
-    exchange_url(update, context)
-    currency_url(update, context)
-    premium_url(update, context)
-    format_url(update, context)
-    # TODO: Add button to run query from this menu
+
+
+def language(update: Update, context: CallbackContext):
+    if 'lang' not in context.user_data.keys():
+        context.user_data["lang"] = 'en'
+    keyboard_lang = [
+        [
+            InlineKeyboardButton(
+                EMOJI_EN + ' ' + "English", callback_data='en'),
+            InlineKeyboardButton(
+                EMOJI_ES + ' ' + "Español", callback_data='es'),
+            InlineKeyboardButton(
+                EMOJI_IT + ' ' + "Italiano", callback_data='it'),
+            InlineKeyboardButton(EMOJI_ZH + ' ' + "中文", callback_data='zh'),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard_lang)
+    update.message.reply_text(i18n.t(
+        'menu.language_select', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def help(update: Update, context: CallbackContext):
+    if 'lang' not in context.user_data.keys():
+        context.user_data["lang"] = 'en'
+    keyboard_developer = [
+        [InlineKeyboardButton(i18n.t('menu.developer', locale=context.user_data["lang"]),
+                              url='https://t.me/fgbernal')]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_developer)
-    update.message.reply_text("""Available Commands:
-    /start - configure your options
-    /query - execute the query
-    /help - show this help message
-    /exchange - select the exchange
-    /currency - set the currency you want to pay or get paid
-    /premium - set the premium over or under market price you're willing to accept
-    /action - you want to buy or sell bitcoin?
-    /format - output format, image or plain text
-    """, reply_markup=reply_markup)
+
+    text = i18n.t('menu.command_available',
+                  locale=context.user_data["lang"]) + '\n'
+    text = text + '/start - ' + \
+        i18n.t('menu.command_start', locale=context.user_data["lang"]) + '\n'
+    text = text + '/query - ' + \
+        i18n.t('menu.command_query', locale=context.user_data["lang"]) + '\n'
+    text = text + '/help - ' + \
+        i18n.t('menu.command_help', locale=context.user_data["lang"]) + '\n'
+    text = text + '/lang - ' + \
+        i18n.t('menu.command_lang', locale=context.user_data["lang"]) + '\n'
+    update.message.reply_text(text, reply_markup=reply_markup)
 
 
-def print_orders(fiat, direction, limit, exchanges):
-    session = get_tor_session()
-    price_exch = Bisq.getFiatPrice(fiat, session)
-    if exchanges == "all":
-        logging.info("Obtaining orders from bisq")
-        bisqOffers = Bisq.getOffers(fiat, direction, price_exch, session)
-        logging.info("Obtaining orders from robosats")
-        robosatsOffers = Robosats.getOffers(fiat, direction, session)
-        logging.info("Obtaining orders from hodlhodl")
-        hodlhodlOffers = HodlHodl.getOffers(
-            fiat, direction, price_exch, session)
-        allOffers = bisqOffers + robosatsOffers + hodlhodlOffers
-    elif exchanges == "bisq":
-        logging.info("Obtaining orders from bisq")
-        bisqOffers = Bisq.getOffers(fiat, direction, price_exch, session)
-        allOffers = bisqOffers
-    elif exchanges == "hodlhodl":
-        logging.info("Obtaining orders from hodlhodl")
-        hodlhodlOffers = HodlHodl.getOffers(
-            fiat, direction, price_exch, session)
-        allOffers = hodlhodlOffers
-    elif exchanges == "robosats":
-        logging.info("Obtaining orders from robosats")
-        robosatsOffers = Robosats.getOffers(fiat, direction, session)
-        allOffers = robosatsOffers
-    if direction == "buy":
-        allOffers.sort(key=lambda item: item.get('price'), reverse=True)
-    elif direction == "sell":
-        allOffers.sort(key=lambda item: item.get('price'))
-
-    table = pt.PrettyTable(
-        ['Exchange', 'Price', 'Dif', 'Min', 'Max', 'Method'])
-
-    for offer in allOffers:
-        if offer['method'].lower() not in config.avoid_methods:
-            row = [f"{offer['exchange']:10}", f"{offer['price']:8n}", f"{offer['dif']:4.1f}%",
-                   f"{offer['min_amount']:7n}", f"{offer['max_amount']:7n}", f"{offer['method']}"]
-            if limit == "alloffers":
-                table.add_row(row)
-            else:
-                if (direction == "buy") and (offer['dif'] > int(limit)):
-                    table.add_row(row)
-                if (direction == "sell") and (offer['dif'] < int(limit)):
-                    table.add_row(row)
-        # TODO: split the message in chunks so it won't exceed the max 4096 characters / msg
-        if len(table.get_string()) > 3800:
-            logger.info("limite de caracteres alcanzado")
-            break
-    return(price_exch, table)
-
-
-def query_url(update: Update, context: CallbackContext):
+def run_query(update: Update, context: CallbackContext):
     if "exchange" in context.user_data.keys():
         exchange = context.user_data["exchange"]
     else:
@@ -227,92 +125,188 @@ def query_url(update: Update, context: CallbackContext):
         format = 'text'
 
     price, result = print_orders(fiat, action, premium, exchange)
+
     msg = f"BTC price: {price} {fiat.upper()}\nBTC {action} offers:\n" + \
         f"{result}"
 
     if format == 'img':
         img = table_to_img(msg)
-        update.message.reply_photo(img)
+        if update.message is None:
+            context.bot.send_photo(
+                update.callback_query.from_user.id, photo=img)
+        else:
+            update.message.reply_photo(photo=img)
     else:
-        update.message.reply_text(
-            f'```{msg}```', parse_mode=ParseMode.MARKDOWN_V2)
+        if update.message is None:
+            context.bot.send_message(update.callback_query.from_user.id,
+                                     text=f'```{msg}```', parse_mode=ParseMode.MARKDOWN_V2)
+        else:
+            update.message.reply_text(
+                text=f'```{msg}```', parse_mode=ParseMode.MARKDOWN_V2)
 
 
 def button(update: Update, context: CallbackContext):
-    update.callback_query.answer()
-    if update.callback_query.data in ['bisq', 'hodlhodl', 'robosats', 'all']:
-        context.user_data["exchange"] = update.callback_query.data
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text="Ok, I will show you orders from " + context.user_data["exchange"] + " exchange(s)")
-    elif update.callback_query.data in ['usd', 'eur']:
-        context.user_data["currency"] = update.callback_query.data
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text="Currency is set to " + context.user_data["currency"])
-    elif update.callback_query.data in ['buy', 'sell']:
-        context.user_data["action"] = update.callback_query.data
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text="Got it!, I will show you " + context.user_data["action"] + " offers from other users")
-    elif update.callback_query.data in ['1', '3', '5', '7', '9', '-1', '-3', '-5', '-7', '-9', 'alloffers']:
-        context.user_data["premium"] = update.callback_query.data
+    query = update.callback_query
+    if 'lang' not in context.user_data.keys():
+        context.user_data["lang"] = 'en'
+    if query.data in ['en', 'es', 'it', 'zh']:
+        context.user_data["lang"] = query.data
+        query.answer()
+        query.edit_message_text(text=i18n.t(
+            'menu.language_reply', locale=context.user_data["lang"]))
+    elif query.data in ['buy', 'sell']:
+        context.user_data["action"] = query.data
+        query.answer()
+        query.edit_message_text(text=i18n.t(
+            'menu.action_reply', action=context.user_data["action"], locale=context.user_data["lang"]))
+        exchange_url(update, context)
+    elif query.data in ['bisq', 'hodlhodl', 'robosats', 'all']:
+        context.user_data["exchange"] = query.data
+        query.answer()
+        query.edit_message_text(i18n.t(
+            'menu.exchange_reply', exchange=context.user_data["exchange"], locale=context.user_data["lang"]))
+        currency_url(update, context)
+    elif query.data in ['usd', 'eur', 'jpy', 'gbp', 'chf', 'cny']:
+        context.user_data["currency"] = query.data
+        query.answer()
+        query.edit_message_text(i18n.t(
+            'menu.currency_reply', currency=context.user_data["currency"], locale=context.user_data["lang"]))
+        premium_url(update, context)
+    elif query.data in ['1', '3', '5', '7', '9', '-1', '-3', '-5', '-7', '-9', 'alloffers']:
+        context.user_data["premium"] = query.data
         if context.user_data["premium"] == "alloffers":
-            msg = "All right, I will show you all orders, regardless of price"
+            msg = i18n.t('menu.premium_all_reply',
+                         locale=context.user_data["lang"])
         elif int(context.user_data["premium"]) < 0:
-            msg = "ok, I will set the price limit at " + \
-                context.user_data["premium"] + "% below the market price."
+            msg = i18n.t('menu.premium_low_reply',
+                         premium=context.user_data["premium"], locale=context.user_data["lang"])
         elif int(context.user_data["premium"]) > 0:
-            msg = "ok, I will set the price limit at " + \
-                context.user_data["premium"] + "% above the market price."
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text=msg)
-    elif update.callback_query.data in ['img', 'text']:
-        context.user_data["format"] = update.callback_query.data
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text="Ok, I will display the result as " + context.user_data["format"])
-    elif update.callback_query.data in ['query']:
-        update.callback_query.bot.send_message(
-            chat_id=update.callback_query.from_user.id,
-            text="Executing query. Please wait...")
+            msg = i18n.t('menu.premium_high_reply',
+                         premium=context.user_data["premium"], locale=context.user_data["lang"])
+        query.answer()
+        query.edit_message_text(msg)
+        format_url(update, context)
+    elif query.data in ['img', 'text']:
+        context.user_data["format"] = query.data
+        query.answer()
+        query.edit_message_text(i18n.t(
+            'menu.format_reply', format=context.user_data["format"], locale=context.user_data["lang"]))
         query_url(update, context)
+    elif query.data in ['query']:
+        query.edit_message_text(text=i18n.t(
+            'menu.searching', locale=context.user_data["lang"]))
+        query.answer()
+        run_query(update, context)
 
 
 def exchange_url(update: Update, context: CallbackContext):
+    keyboard_exchanges = [
+        [
+            InlineKeyboardButton("Bisq", callback_data='bisq'),
+            InlineKeyboardButton("HodlHodl", callback_data='hodlhodl'),
+            InlineKeyboardButton("Robosats", callback_data='robosats'),
+            InlineKeyboardButton("All", callback_data='all')
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_exchanges)
-    update.message.reply_text(
-        'Which exchange(s) do you want to use?', reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.callback_query.from_user.id,
+                             text=i18n.t('menu.exchange_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def currency_url(update: Update, context: CallbackContext):
+    keyboard_currencies = [
+        [
+            InlineKeyboardButton("($) USD", callback_data='usd'),
+            InlineKeyboardButton("(€) EUR", callback_data='eur'),
+            InlineKeyboardButton("(¥) JPY", callback_data='jpy')
+        ],
+        [
+            InlineKeyboardButton("(£) GBP", callback_data='gbp'),
+            InlineKeyboardButton("(fr) CHF", callback_data='chf'),
+            InlineKeyboardButton("(¥) CNY", callback_data='cny')
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_currencies)
-    update.message.reply_text(
-        'In which currency do you want to pay or get paid?', reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.callback_query.from_user.id,
+                             text=i18n.t('menu.currency_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def premium_url(update: Update, context: CallbackContext):
+    keyboard_premium = [
+        [
+            InlineKeyboardButton("-9%", callback_data='-9'),
+            InlineKeyboardButton("-7%", callback_data='-7'),
+            InlineKeyboardButton("-5%", callback_data='-5'),
+            InlineKeyboardButton("-3%", callback_data='-3'),
+            InlineKeyboardButton("-1%", callback_data='-1')
+        ],
+        [
+            InlineKeyboardButton(i18n.t(
+                'menu.show_all', locale=context.user_data["lang"]), callback_data='alloffers'),
+        ],
+        [
+            InlineKeyboardButton("0%", callback_data='0'),
+            InlineKeyboardButton("1%", callback_data='1'),
+            InlineKeyboardButton("3%", callback_data='3'),
+            InlineKeyboardButton("5%", callback_data='5'),
+            InlineKeyboardButton("7%", callback_data='7'),
+            InlineKeyboardButton("9%", callback_data='9')
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_premium)
-    update.message.reply_text(
-        'Which premium are you willing to accept over or under market price?', reply_markup=reply_markup)
+    context.bot.send_message(chat_id=update.callback_query.from_user.id,
+                             text=i18n.t('menu.premium_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def action_url(update: Update, context: CallbackContext):
+    keyboard_actions = [
+        [
+            InlineKeyboardButton(EMOJI_SELL + ' ' + i18n.t('menu.buy',
+                                 locale=context.user_data["lang"]), callback_data='sell'),
+            InlineKeyboardButton(EMOJI_BUY + ' ' + i18n.t('menu.sell',
+                                 locale=context.user_data["lang"]), callback_data='buy')
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_actions)
     update.message.reply_text(
-        'What do you want to do?', reply_markup=reply_markup)
+        i18n.t('menu.action_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def format_url(update: Update, context: CallbackContext):
+    keyboard_format = [
+        [
+            InlineKeyboardButton(EMOJI_TEXT + ' ' + i18n.t('menu.plain_text',
+                                 locale=context.user_data["lang"]), callback_data='text'),
+            InlineKeyboardButton(EMOJI_PICTURE + ' ' + i18n.t('menu.image',
+                                 locale=context.user_data["lang"]), callback_data='img')
+        ]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard_format)
-    update.message.reply_text(
-        'In which format do you want the result to be displayed?', reply_markup=reply_markup)
+    if update.message is None:
+        context.bot.send_message(chat_id=update.callback_query.from_user.id,
+                                 text=i18n.t('menu.format_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
+    else:
+        update.message.reply_text(text=i18n.t(
+            'menu.format_question', locale=context.user_data["lang"]), reply_markup=reply_markup)
+
+
+def query_url(update: Update, context: CallbackContext):
+    keyboard_runquery = [
+        [InlineKeyboardButton(i18n.t(
+            'menu.start_search', locale=context.user_data["lang"]), callback_data='query')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard_runquery)
+    if update.message is None:
+        context.bot.send_message(chat_id=update.callback_query.from_user.id,
+                                 text=i18n.t('menu.run_query', locale=context.user_data["lang"]), reply_markup=reply_markup)
+    else:
+        update.message.reply_text(text=i18n.t(
+            'menu.run_query', locale=context.user_data["lang"]), reply_markup=reply_markup)
 
 
 def unknown_text(update: Update, context: CallbackContext):
     update.message.reply_text(
-        "Sorry I can't recognize what you said '%s'" % update.message.text)
+        i18n.t('menu.not_recognized', message=update.message.text, locale=context.user_data["lang"]))
 
 
 def main() -> None:
@@ -322,12 +316,8 @@ def main() -> None:
     disp = updater.dispatcher
     disp.add_handler(CommandHandler('start', start))
     disp.add_handler(CommandHandler('help', help))
-    disp.add_handler(CommandHandler('exchange', exchange_url))
-    disp.add_handler(CommandHandler('currency', currency_url))
-    disp.add_handler(CommandHandler('premium', premium_url))
-    disp.add_handler(CommandHandler('action', action_url))
-    disp.add_handler(CommandHandler('format', format_url))
-    disp.add_handler(CommandHandler('query', query_url))
+    disp.add_handler(CommandHandler('query', run_query))
+    disp.add_handler(CommandHandler('lang', language))
 
     disp.add_handler(CallbackQueryHandler(button))
 

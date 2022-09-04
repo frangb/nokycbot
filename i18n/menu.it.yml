@@ -1,0 +1,31 @@
+it:
+  buy: Voglio comprare Bitcoin
+  sell: Voglio vendere Bitcoin 
+  show_all: Mostrare tutti
+  start_search: ¡Iniziare la ricerca!
+  plain_text: Testo normale
+  image: Immagine 
+  developer: Contatta lo sviluppatore
+  intro: "Benvenuto a noKYCbot. Ti aiuterò a trovare ordini di acquisto e vendita sugli exchange decentralizzati Bisq, HodlHodl e Robotsats. Imposta i seguenti parametri di ricerca:"
+  action_question: Cosa vuoi fare?
+  action_reply: Ottimo! Ti mostrerò le offerte della % {action} di altri utenti
+  exchange_question: ¿Quale exchange vuoi usare?
+  exchange_reply: Va bene, ti mostrerò ordine di % {exchange}
+  currency_question: In quale valuta ti piacerebbe pagare o essere pagato? 
+  currency_reply: Valuta impostata a %{currency}
+  premium_question: Quanto premium sei disposto ad accettare rispetto o sotto il prezzo di mercato?
+  premium_all_reply: Perfetto, ti mostrerò tutti gli ordini, ordinati da quello per te più vantaggioso a quello meno
+  premium_low_reply: Ok, imposterò il prezzo limite a un %{premium} % inferiore al prezzo di mercato 
+  premium_high_reply: Ok, imposteró il prezzo limite a un %{premium} % sopra il prezzo di mercato
+  format_question: In che forma ti piacerebbe ottenere la risposta? (immagine é il piu raccomandabile per dispositivi iOS)
+  format_reply: Ok, mostraró il risultato come %{format}
+  run_query: Adesso puoi eseguire la ricerca
+  searching: Raccolta offerte. Ti prego resta in attesa (l'operazione potrebbe richiedere qualche minuto)
+  not_recognized: Scusa, non riesco a capire cosa hai detto , %{message}
+  language_select: Scegli la lingua desiderata 
+  language_reply: Ok, lingua scelta
+  command_available: "Comandi disponibili"
+  command_start: Il bot ti farà alcune domande per impostare appropriatamente la ricerca  
+  command_query: Eseguire la ricerca
+  command_help: Mostrare questo aiuto
+  command_lang: Cambia lingua  
